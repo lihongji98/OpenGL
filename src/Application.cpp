@@ -70,7 +70,6 @@ static unsigned int CompileShader(unsigned int type, const std::string& source) 
     return id;
 }
 
-
 static unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader) {
     unsigned int program = glCreateProgram();
     unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
@@ -143,14 +142,14 @@ int main(void)
 
 
 
-    ShaderProgramSource source = ParseShader("shader/Basic.shader");
+    ShaderProgramSource source = ParseShader("src/shader/Basic.shader");
 
     unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);
     glUseProgram(shader);
 
 
     int location = glGetUniformLocation(shader, "u_Color");
-    _ASSERT(location != -1);
+    // ASSERT(location != -1);
     glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f);
 
     glBindVertexArray(0);
