@@ -8,6 +8,11 @@
 
 #include "DataStructure.h"
 
+#include "Renderer.h"
+
+#include "IndexBuffer.h"
+#include "VertexBuffer.h"
+
 
 static ShaderProgramSource ParseShader(const std::string& filepath)
 {
@@ -86,13 +91,19 @@ static unsigned int CreateShader(const std::string& vertexShader, const std::str
 
 int main(void)
 {
+    {
     GLFWwindow* window;
 
-    /* Initialize the library */
+
     if (!glfwInit())
         return -1;
 
-    /* Create a windowed mode window and its OpenGL context */
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+
     window = glfwCreateWindow(640, 480, "OpenGL", NULL, NULL);
     if (!window)
     {
@@ -100,15 +111,16 @@ int main(void)
         return -1;
     }
 
-    /* Make the window's context current */
+
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(2);
 
     glewInit();
 
     float position[] = {
-        -0.5f, -0.5f, // 0
+        -0.5f, -0.3f, // 0
          0.5f, -0.5f, // 1
-         0.5f,  0.5f, // 2
+         0.5f,  0.3f, // 2
         -0.5f,  0.5f, // 3
 
     };
@@ -118,43 +130,57 @@ int main(void)
         2, 3, 0
     };
 
-    unsigned int buffer;
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 2 * 6, position, GL_STATIC_DRAW);
+    unsigned int vao;
+    GLCall(glGenVertexArrays(1, &vao));
+    GLCall(glBindVertexArray(vao));
 
-    unsigned int ibo;
-    glGenBuffers(1, &ibo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * 6, indices, GL_STATIC_DRAW);
+    VertexBuffer vb(position, 4 * 2 * sizeof(float));
 
-    /*
-        here is to clearify index=0 of vertex attributes is selected to store position info.
-        the last(6th) parameter is pointer offset, it is used when multiple attributes in the vertex,
-        the value should be the memory size of the attribute data size before. example: (*void)(8 * sizeof(float)), since "position" has 8 floats
-    */
-    int index = 0;
-    int coordinate_cap = 2;
-    glEnableVertexAttribArray(index);
-    glVertexAttribPointer(index, coordinate_cap, GL_FLOAT, GL_FALSE, coordinate_cap * sizeof(float), 0);
-    
+    GLCall(glEnableVertexAttribArray(0));
+    GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0));
+
+    IndexBuffer ib(indices, 6);
+
+
 
     ShaderProgramSource source = ParseShader("shader/Basic.shader");
-    std::cout << "Vertex" << std::endl;
-    std::cout << source.VertexSource << std::endl;
-    std::cout << "Fragment" << std::endl;
-    std::cout << source.FragmentSource << std::endl;
 
     unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);
     glUseProgram(shader);
 
 
+    int location = glGetUniformLocation(shader, "u_Color");
+    _ASSERT(location != -1);
+    glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f);
+
+    glBindVertexArray(0);
+    glUseProgram(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+
+    float r = 0.0f;
+    float increment = 0.05f;
     while (!glfwWindowShouldClose(window))
     {
 
-        glClear(GL_COLOR_BUFFER_BIT);
+        GLCall(glClear(GL_COLOR_BUFFER_BIT));
+
+        GLCall(glUseProgram(shader));
+        GLCall(glUniform4f(location, r, 0.0f, 0.0f, 1.0f));
+
+        GLCall(glBindVertexArray(vao));
+        ib.Bind();
+
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        if (r > 1.0f)
+            increment = -0.05f;
+        else if (r < 0.0f)
+            increment = 0.05f;
+
+        r += increment;
 
         glfwSwapBuffers(window);
 
@@ -162,6 +188,7 @@ int main(void)
     }
 
     glDeleteProgram(shader);
+    }
 
     glfwTerminate();
     return 0;
